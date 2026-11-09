@@ -1,0 +1,6 @@
+gymnasium
+numpy==1.26.4
+torch
+matplotlib
+swig
+gymnasium[box2d]
