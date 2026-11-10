@@ -1,13 +1,16 @@
 import numpy as np
+import pickle
+import os
 
-class Agent():
+class Agent_Q_learning():
     def __init__(self,
                 env,
                 learning_rate,
                 start_epsilon,
                 epsilon_decay,
                 final_epsilon,
-                gamma
+                gamma,
+                table_directory=None
                 ):
         self.env=env
         self.learning_rate=learning_rate
@@ -18,11 +21,14 @@ class Agent():
 
         self.basic_action = self.env.action_space.sample()
 
-        self.Q_table={}
+        if (table_directory):
+            with open(table_directory, "rb") as file:
+                self.Q_table = pickle.load(file)
+        else :
+            self.Q_table={}
 
 
     def best_action(self,state):
-        
         if (state in self.Q_table.keys()):
             actions_stored=self.Q_table[state]
             action= max(actions_stored, key=lambda key: actions_stored[key])
@@ -34,6 +40,7 @@ class Agent():
 
     def update_epsilon(self):
         self.epsilon=max(self.final_epsilon,self.epsilon-self.epsilon_decay)
+        return self.epsilon
 
     
     def eps_greedy_action(self,state):
@@ -77,4 +84,14 @@ class Agent():
 
         self.Q_table[state][action]=current_value + (self.learning_rate*error_TD)
 
-        return 0
+        return error_TD
+
+    def save_table(self, training_name, directory="models"):
+        os.makedirs(directory, exist_ok=True)
+
+        path = os.path.join(directory, f"{training_name}.pkl")
+
+        with open(path, "wb") as file:
+            pickle.dump(self.Q_table, file)
+
+        print(f"Q-table saved: {path}")
