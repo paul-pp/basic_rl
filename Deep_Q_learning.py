@@ -8,7 +8,7 @@ import random
 
 
 
-class Agent():
+class Agent_DQN():
     def __init__(self,
                 env,
 
@@ -21,8 +21,11 @@ class Agent():
                 epsilon_decay,
                 final_epsilon,
 
-                gamma
+                gamma,
+
+                main_neural_network_directory=None
                 ):
+
         
         self.env=env
 
@@ -32,6 +35,34 @@ class Agent():
 
         self.gamma=gamma
 
+        self.make_nn_structure()
+
+        if (main_neural_network_directory):
+            state_dict = torch.load(main_neural_network_directory)
+            self.main_network.load_state_dict(state_dict)
+
+        self.criterion = torch.nn.MSELoss(reduction='mean')
+        if (start_learning_rate):
+            self.optimizer = torch.optim.Adam(self.main_network.parameters(), lr=start_learning_rate)
+            self.scheduler = torch.optim.lr_scheduler.LinearLR(
+                        self.optimizer,
+                        start_factor=start_factor_lr,
+                        end_factor=end_factor_lr,
+                        total_iters=total_iters_lr
+                    )
+
+            # self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            #     self.optimizer,
+            #     gamma=0.99998
+            # )
+        
+
+        self.network_copy=copy.deepcopy(self.main_network)
+
+    
+
+
+    def make_nn_structure(self):
         n_in=self.env.observation_space.shape[0]
         n_h1=100
         n_h2=100
@@ -46,23 +77,11 @@ class Agent():
 
             nn.Linear(n_h2, n_out)
         )
-        self.criterion = torch.nn.MSELoss(reduction='mean')
-        self.optimizer = torch.optim.Adam(self.main_network.parameters(), lr=start_learning_rate)
 
-        # self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
-        #     self.optimizer,
-        #     gamma=0.99998
-        # )
-
-        self.scheduler = torch.optim.lr_scheduler.LinearLR(
-            self.optimizer,
-            start_factor=start_factor_lr,
-            end_factor=end_factor_lr,
-            total_iters=total_iters_lr
-        )
+        return 0
 
 
-        self.network_copy=copy.deepcopy(self.main_network)
+
 
     def normalize_state(self,state):
         min_state=np.array(self.env.observation_space.low)
@@ -87,6 +106,7 @@ class Agent():
 
     def update_epsilon(self):
         self.epsilon=max(self.final_epsilon,self.epsilon-self.epsilon_decay)
+        return self.epsilon
 
     
     def eps_greedy_action(self,state):
@@ -142,6 +162,7 @@ class Agent():
         self.optimizer.step()
 
         return loss.item()
+
 
     def save_network(self,training_name,directory="models"):
         os.makedirs(directory, exist_ok=True)
